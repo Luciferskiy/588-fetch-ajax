@@ -1,43 +1,6 @@
-const productsJson = 
-`[
-    {
-        "id": "1",
-        "title": "Baby Yoda",
-        "image": "img/baby-yoda.svg",
-        "description": "Baby Yoda sticker",
-        "price": 49.99
-    },
-    {
-        "id": "2",
-        "title": "Banana",
-        "image": "img/banana.svg",
-        "description": "Banana sticker",
-        "price": 19.99
-    },
-    {
-        "id": "3",
-        "title": "Girl",
-        "image": "img/girl.svg",
-        "description": "Girl sticker",
-        "price": 24.99
-    },
-    {
-        "id": "4",
-        "title": "Viking",
-        "image": "img/viking.svg",
-        "description": "Viking sticker",
-        "price": 34.99
-    },
-    {
-        "id": "5",
-        "title": "Kitty",
-        "image": "https://placekitten.com/400/400",
-        "description": "Kitten",
-        "price": 30.99
-    }
-]`;
+let products;
 
-function renderProducts(products, sortOrder) {
+function renderProducts(sortOrder) {
     const sortedProducts = [...products]
         .sort( (a, b) => sortOrder === 'ascending' 
                     ? a.price - b.price 
@@ -51,14 +14,12 @@ function renderProducts(products, sortOrder) {
                     <p>${product.description}</p>
                     <div class="buttons">
                         <button class="button card-button">Info</button>
-                        <button class="button card-button">Buy - ${product.price}</button>
+                        <button class="button card-button">Buy - ${product.convertedPrice} (${product.currency})</button>
                     </div>
                 </article>`;
     }
     productsContainer.innerHTML = html;
 }
-
-renderProducts(JSON.parse(productsJson), 'ascending');
 
 const buttonSortAscending = document.querySelector('.sort-ascending');
 const buttonSortDescending = document.querySelector('.sort-descending');
@@ -67,9 +28,59 @@ buttonSortAscending.addEventListener('click', sortAscending);
 buttonSortDescending.addEventListener('click', sortDescending);
 
 function sortAscending() {
-    renderProducts(JSON.parse(productsJson), 'ascending');
+    renderProducts('ascending');
 }
 
 function sortDescending() {
-    renderProducts(JSON.parse(productsJson), 'descending');
+    renderProducts('descending');
 }
+
+// function fetchProducts() {
+//     fetch('products.json')
+//         .then(response => response.json() )
+//         .then(productsFromServer => products = productsFromServer)
+//         .then( () => renderProducts() )
+//         .catch( err => alert(err.message) );
+// }
+
+
+async function fetchProducts() {
+    const response = await fetch('products.json');
+    products = await response.json();
+    await convertCurrency();
+    renderProducts();
+}
+
+
+// function fetchProducts() {
+//     const xhr = new XMLHttpRequest();
+//     xhr.onreadystatechange = function () {
+//         if (xhr.readyState === 4 && xhr.status === 200) {
+//             products = JSON.parse(xhr.responseText);
+//             convertCurrency().then( () => renderProducts() );
+//         }
+//     }
+//     xhr.open('GET', 'products.json', true);
+//     xhr.send();
+// }
+
+
+fetchProducts();
+
+async function convertCurrency() {
+    const startCurrency = 'USD';
+    const targetCurrency = document.querySelector('.currency-input').value;
+    const response = await fetch(`https://api.exchangerate-api.com/v4/latest/${startCurrency}`);
+    const rates = await response.json();
+    const rate = rates.rates[targetCurrency];
+    for (const product of products) {
+        product.convertedPrice = (product.price * rate).toFixed(2);
+        product.currency = targetCurrency;
+    }
+}
+
+document.querySelector('.convert-currency')
+    .addEventListener('click', async () => {
+        await convertCurrency();
+        renderProducts();
+    });
